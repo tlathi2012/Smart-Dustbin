@@ -1,0 +1,68 @@
+#define BLYNK_TEMPLATE_ID "Your_Template_ID"
+#define BLYNK_DEVICE_NAME "Smart Dustbin"
+#define BLYNK_AUTH_TOKEN "Your_Auth_Token"
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <Servo.h>
+
+char ssid[] = "Your_WiFi_Name";
+char pass[] = "Your_WiFi_Password";
+
+Servo lidServo;
+
+#define trigPin 5
+#define echoPin 18
+#define servoPin 23
+
+long duration;
+int distance;
+
+BlynkTimer timer;
+
+void measureDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  duration = pulseIn(echoPin, HIGH);
+  distance = duration * 0.034 / 2;
+
+  Blynk.virtualWrite(V0, distance);
+
+  if (distance < 15) {
+    lidServo.write(90);  // Open lid
+    delay(1500);
+    lidServo.write(0);   // Close lid
+  }
+}
+
+BLYNK_WRITE(V1) { // Manual open/close button
+  int val = param.asInt();
+  if (val == 1) {
+    lidServo.write(90);
+    delay(1500);
+    lidServo.write(0);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  lidServo.attach(servoPin);
+  lidServo.write(0);
+
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  timer.setInterval(2000L, measureDistance);
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
